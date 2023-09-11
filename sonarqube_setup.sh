@@ -1,4 +1,7 @@
 #!/bin/bash
+# This is a Bash script for setting up and configuring a SonarQube server.
+
+# Backup the original sysctl.conf file and set new kernel parameters.
 cp /etc/sysctl.conf /root/sysctl.conf_backup
 cat <<EOT> /etc/sysctl.conf
 vm.max_map_count=262144
@@ -6,21 +9,23 @@ fs.file-max=65536
 ulimit -n 65536
 ulimit -u 4096
 EOT
+
+# Backup the original security limits configuration and set new limits for SonarQube.
 cp /etc/security/limits.conf /root/sec_limit.conf_backup
 cat <<EOT> /etc/security/limits.conf
 sonarqube   -   nofile   65536
 sonarqube   -   nproc    409
 EOT
 
+# Update the system packages and install OpenJDK 11.
 sudo apt-get update -y
 sudo apt-get install openjdk-11-jdk -y
 sudo update-alternatives --config java
-
 java -version
 
+# Install PostgreSQL and configure it.
 sudo apt update
 wget -q https://www.postgresql.org/media/keys/ACCC4CF8.asc -O - | sudo apt-key add -
-
 sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
 sudo apt install postgresql postgresql-contrib -y
 #sudo -u postgres psql -c "SELECT version();"
@@ -34,15 +39,21 @@ sudo -i -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE sonarqube to sonar
 systemctl restart  postgresql
 #systemctl status -l   postgresql
 netstat -tulpena | grep postgres
+
+# Download and install SonarQube.
 sudo mkdir -p /sonarqube/
 cd /sonarqube/
 sudo curl -O https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-8.3.0.34182.zip
 sudo apt-get install zip -y
 sudo unzip -o sonarqube-8.3.0.34182.zip -d /opt/
 sudo mv /opt/sonarqube-8.3.0.34182/ /opt/sonarqube
+
+# Create a user and group for SonarQube and set permissions.
 sudo groupadd sonar
 sudo useradd -c "SonarQube - User" -d /opt/sonarqube/ -g sonar sonar
 sudo chown sonar:sonar /opt/sonarqube/ -R
+
+# Configure SonarQube properties.
 cp /opt/sonarqube/conf/sonar.properties /root/sonar.properties_backup
 cat <<EOT> /opt/sonarqube/conf/sonar.properties
 sonar.jdbc.username=sonar
@@ -56,6 +67,7 @@ sonar.log.level=INFO
 sonar.path.logs=logs
 EOT
 
+# Create a systemd service for SonarQube.
 cat <<EOT> /etc/systemd/system/sonarqube.service
 [Unit]
 Description=SonarQube service
@@ -74,15 +86,14 @@ Restart=always
 LimitNOFILE=65536
 LimitNPROC=4096
 
-
 [Install]
 WantedBy=multi-user.target
 EOT
 
 systemctl daemon-reload
 systemctl enable sonarqube.service
-#systemctl start sonarqube.service
-#systemctl status -l sonarqube.service
+
+# Install Nginx and configure it for SonarQube.
 apt-get install nginx -y
 rm -rf /etc/nginx/sites-enabled/default
 rm -rf /etc/nginx/sites-available/default
@@ -109,11 +120,15 @@ server{
     }
 }
 EOT
+
 ln -s /etc/nginx/sites-available/sonarqube /etc/nginx/sites-enabled/sonarqube
 systemctl enable nginx.service
 #systemctl restart nginx.service
+
+# Open necessary ports in the firewall.
 sudo ufw allow 80,9000,9001/tcp
 
+# Reboot the system.
 echo "System reboot in 30 sec"
 sleep 30
 reboot
