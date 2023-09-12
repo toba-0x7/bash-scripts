@@ -19,7 +19,7 @@ EOT
 
 # Update the system packages and install OpenJDK 11.
 sudo apt-get update -y
-sudo apt-get install openjdk-11-jdk -y
+sudo apt-get install openjdk-17-jdk -y
 sudo update-alternatives --config java
 java -version
 
@@ -43,10 +43,10 @@ netstat -tulpena | grep postgres
 # Download and install SonarQube.
 sudo mkdir -p /sonarqube/
 cd /sonarqube/
-sudo curl -O https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-8.3.0.34182.zip
+sudo curl -O https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-10.2.0.77647.zip
 sudo apt-get install zip -y
-sudo unzip -o sonarqube-8.3.0.34182.zip -d /opt/
-sudo mv /opt/sonarqube-8.3.0.34182/ /opt/sonarqube
+sudo unzip -o sonarqube-10.2.0.77647.zip -d /opt/
+sudo mv /opt/sonarqube-10.2.0.77647/ /opt/sonarqube
 
 # Create a user and group for SonarQube and set permissions.
 sudo groupadd sonar
